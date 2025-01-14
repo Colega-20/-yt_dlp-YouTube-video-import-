@@ -1,0 +1,158 @@
+<!-- @format -->
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Descargar Videos de YouTube</title>
+    <!-- Custom Styles -->
+    <link
+      rel="icon"
+      href="https://cdn-icons-png.flaticon.com/512/12044/12044575.png"
+      type="image/x-icon" />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}" />
+  </head>
+  <body>
+    <!-- Agregar el contenedor del loader -->
+    <div class="loader-container" id="loaderContainer">
+      <div class="loader">
+        <div class="loader-text"></div>
+      </div>
+    </div>
+
+    <div class="container">
+      <h1>Descargar Videos de YouTube</h1>
+
+      <div class="search-container">
+        <div class="search-box">
+          <input
+            type="text"
+            id="searchInput"
+            placeholder="Buscar videos en YouTube..." />
+          <button onclick="searchVideos()">Buscar</button>
+        </div>
+      </div>
+      <hr />
+      <form action="/download_video" method="POST" id="downloadForm">
+        <input
+          type="text"
+          id="video_url"
+          name="video_url"
+          required
+          placeholder="Pega aquí el enlace del video..." />
+
+        <select name="quality" select class="quality-selector" id="quality">
+          <option value="best">Mejor calidad</option>
+          <option
+            value="bestvideo[height<=1080][vcodec!*=av01]+bestaudio[ext=m4a]/best[height<=1080][vcodec!*=av01]">
+            Full HD (1080p)
+          </option>
+          <option
+            value="bestvideo[height<=720][vcodec!*=av01]+bestaudio[ext=m4a]/best[height<=720][vcodec!*=av01]"
+            selected>
+            HD (720p)
+          </option>
+          <option
+            value="bestvideo[height<=480][vcodec!*=av01]+bestaudio[ext=m4a]/best[height<=720]">
+            SD (480p)
+          </option>
+          <option
+            value="bestvideo[height<=360][vcodec!*=av01]+bestaudio[ext=m4a]/best[height<=720]">
+            SD (360p)
+          </option>
+        </select>
+
+        <button type="submit">Descargar</button>
+      </form>
+
+      <div id="searchResults"></div>
+      <div class="marcas1">
+        <div id="©">By Edisson © 2024. All rights reserved.</div>
+      </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script>
+      const form = document.getElementById("downloadForm");
+      const loaderContainer = document.getElementById("loaderContainer");
+
+      form.addEventListener("submit", function (event) {
+        event.preventDefault(); // Evitar el envío normal del formulario
+
+        // Mostrar el loader
+        loaderContainer.style.display = "flex";
+
+        // Obtener los datos del formulario
+        const formData = new FormData(form);
+
+        // Enviar los datos usando fetch
+        fetch(form.action, {
+          method: "POST",
+          body: formData,
+        })
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("Error en la red");
+            }
+            const contentDisposition = response.headers.get(
+              "Content-Disposition"
+            );
+            let filename; // Nombre por defecto
+
+            // Extraer el nombre del archivo del encabezado Content-Disposition
+            if (
+              contentDisposition &&
+              contentDisposition.indexOf("attachment") !== -1
+            ) {
+              const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(
+                contentDisposition
+              );
+              if (matches != null && matches[1]) {
+                filename = matches[1].replace(/['"]/g, ""); // Limpiar comillas
+              }
+            }
+
+            return response.blob().then((blob) => ({ blob, filename })); // Devolver el blob y el nombre
+          })
+          .then(({ blob, filename }) => {
+            // Crear un enlace para descargar el archivo
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = filename; // Usar el nombre original del archivo
+            document.body.appendChild(a);
+            a.click(); // Simular clic en el enlace
+            a.remove(); // Eliminar el enlace del DOM
+            URL.revokeObjectURL(url); // Liberar el objeto URL
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+            loaderContainer.style.display = "none";
+          })
+          .finally(() => {
+            // Ocultar el loader después de recibir la respuesta
+            loaderContainer.style.display = "none";
+          });
+      });
+    </script>
+    <script>
+      //notas
+      const notas = {
+        version: "Web: v1.0.0",
+        version_js: "Js: v1.0.0",
+        build: "Build: 12-1-2025",
+        fecha: "Creacion: 11-1-2025",
+        by: "By: Colega/Edisson",
+      };
+
+      console.log(notas["version"]);
+      console.log(notas["version_js"]);
+      console.log(notas["build"]);
+      console.log(notas["fecha"]);
+      console.log(notas["by"]);
+    </script>
+  </body>
+</html>
