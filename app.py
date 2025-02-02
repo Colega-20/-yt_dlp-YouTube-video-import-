@@ -16,9 +16,8 @@ def download_video(video_url, quality):
             'outtmpl': f'{TEMP_DOWNLOAD_PATH}/%(title)s.%(ext)s',
             'format': quality,
             'merge_output_format': 'mp4',
-            'cookies_from_browser': ('chrome',),  # Usa las cookies desde Chrome
         }
-
+        
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(video_url, download=True)
             file_path = ydl.prepare_filename(info)
@@ -44,7 +43,6 @@ def delete_file_later(file_path, delay=10, retry_delay=15, max_retries=40):
             retries += 1
     
     print(f"No se pudo eliminar el archivo después de {max_retries} intentos: {file_path}")
-
 
 @app.route('/', methods=['GET'])
 def home():

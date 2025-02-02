@@ -32,7 +32,7 @@
             type="text"
             id="searchInput"
             placeholder="Buscar videos en YouTube..." />
-          <button onclick="searchVideos()">Buscar</button>
+          <button id="Buscar" onclick="searchVideos()">Buscar</button>
         </div>
       </div>
       <hr />
@@ -45,23 +45,26 @@
           placeholder="Pega aquí el enlace del video..." />
 
         <select name="quality" select class="quality-selector" id="quality">
-          <option value="best">Mejor calidad</option>
           <option
-            value="bestvideo[height<=1080][vcodec!*=av01]+bestaudio[ext=m4a]/best[height<=1080][vcodec!*=av01]">
+            value="bestvideo[vcodec^=avc1]+bestaudio[ext=mp4]/best[vcodec^=avc1]">
+            Mejor calidad
+          </option>
+          <option
+            value="bestvideo[height<=1080][vcodec^=avc1]+bestaudio[ext=mp4]/best[vcodec^=avc1]">
             Full HD (1080p)
           </option>
           <option
-            value="bestvideo[height<=720][vcodec!*=av01]+bestaudio[ext=m4a]/best[height<=720][vcodec!*=av01]"
+            value="bestvideo[height<=720][vcodec^=avc1]+bestaudio[ext=mp4]/best[vcodec^=avc1]"
             selected>
             HD (720p)
           </option>
           <option
-            value="bestvideo[height<=480][vcodec!*=av01]+bestaudio[ext=m4a]/best[height<=720]">
+            value="bestvideo[height<=480][vcodec^=avc1]+bestaudio[ext=mp4]/best[vcodec^=avc1]">
             SD (480p)
           </option>
           <option
-            value="bestvideo[height<=360][vcodec!*=av01]+bestaudio[ext=m4a]/best[height<=720]">
-            SD (360p)
+            value="bestvideo[height<=360][vcodec^=avc1]+bestaudio[ext=mp4]/best[vcodec^=avc1]">
+            (360p)
           </option>
         </select>
 
@@ -135,15 +138,17 @@
           .finally(() => {
             // Ocultar el loader después de recibir la respuesta
             loaderContainer.style.display = "none";
+            // // Limpiar el input
+            document.getElementById("video_url").value = "";
           });
       });
     </script>
     <script>
       //notas
       const notas = {
-        version: "Web: v1.0.0",
-        version_js: "Js: v1.0.0",
-        build: "Build: 12-1-2025",
+        version: "Web: v1.0.1",
+        version_js: "Js: v1.0.1",
+        build: "Build: 14-1-2025",
         fecha: "Creacion: 11-1-2025",
         by: "By: Colega/Edisson",
       };
