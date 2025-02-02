@@ -64,5 +64,5 @@ def download_video_route():
         return f"Error al descargar el video: {file_path}", 500
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5011))
+    port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port, debug=True)
