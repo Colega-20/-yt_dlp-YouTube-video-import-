@@ -16,12 +16,8 @@ def download_video(video_url, quality):
             'outtmpl': f'{TEMP_DOWNLOAD_PATH}/%(title)s.%(ext)s',
             'format': quality,
             'merge_output_format': 'mp4',
+            'cookies_from_browser': ('chrome',),  # Usa las cookies desde Chrome
         }
-        
-        if quality == 'best':
-            ydl_opts['format'] = 'bestvideo[vcodec!*=av01]+bestaudio[ext=m4a]/best[vcodec!*=av01]'
-        elif quality == 'worst':
-            ydl_opts['format'] = 'worst[vcodec!*=av01]'
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(video_url, download=True)
