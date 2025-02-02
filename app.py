@@ -18,6 +18,11 @@ def download_video(video_url, quality):
             'merge_output_format': 'mp4',
         }
         
+        if quality == 'best':
+            ydl_opts['format'] = 'bestvideo[vcodec!*=av01]+bestaudio[ext=m4a]/best[vcodec!*=av01]'
+        elif quality == 'worst':
+            ydl_opts['format'] = 'worst[vcodec!*=av01]'
+
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(video_url, download=True)
             file_path = ydl.prepare_filename(info)
@@ -44,6 +49,7 @@ def delete_file_later(file_path, delay=10, retry_delay=15, max_retries=40):
     
     print(f"No se pudo eliminar el archivo después de {max_retries} intentos: {file_path}")
 
+
 @app.route('/', methods=['GET'])
 def home():
     return render_template('index.html')
@@ -64,5 +70,5 @@ def download_video_route():
         return f"Error al descargar el video: {file_path}", 500
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 8080))
+    port = int(os.environ.get("PORT", 5011))
     app.run(host="0.0.0.0", port=port, debug=True)
