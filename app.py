@@ -5,11 +5,61 @@ import threading
 import time
 import json
 import re
+import signal
+from contextlib import contextmanager
+import psutil
 
 app = Flask(__name__)
 
 TEMP_DOWNLOAD_PATH = "./descargas"
 os.makedirs(TEMP_DOWNLOAD_PATH, exist_ok=True)
+
+class ProcessTimeoutError(Exception):
+    pass
+
+@contextmanager
+def process_timeout(seconds):
+    def signal_handler(signum, frame):
+        raise ProcessTimeoutError("Proceso tomó demasiado tiempo")
+    
+    # Establecer el manejador de señal
+    signal.signal(signal.SIGALRM, signal_handler)
+    signal.alarm(seconds)
+    
+    try:
+        yield
+    finally:
+        # Desactivar la alarma
+        signal.alarm(0)
+
+def kill_process_tree(process):
+    try:
+        parent = psutil.Process(process.pid)
+        for child in parent.children(recursive=True):
+            child.kill()
+        parent.kill()
+    except psutil.NoSuchProcess:
+        pass
+
+def run_subprocess_with_timeout(command, timeout=300):
+    process = subprocess.Popen(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True
+    )
+    
+    try:
+        stdout, stderr = process.communicate(timeout=timeout)
+        if process.returncode != 0:
+            raise subprocess.CalledProcessError(process.returncode, command, stdout, stderr)
+        return stdout, stderr
+    except subprocess.TimeoutExpired:
+        kill_process_tree(process)
+        raise
+    finally:
+        if process.poll() is None:
+            kill_process_tree(process)
 
 def get_video_info(video_url):
     try:
@@ -18,8 +68,10 @@ def get_video_info(video_url):
             '--dump-json',
             video_url
         ]
-        result = subprocess.run(command, capture_output=True, text=True)
-        return json.loads(result.stdout)
+        stdout, _ = run_subprocess_with_timeout(command, timeout=60)
+        return json.loads(stdout)
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
+        return f"Error obteniendo información del video: {str(e)}"
     except Exception as e:
         return str(e)
 
@@ -43,19 +95,18 @@ def download_video(video_url, quality):
             video_url
         ]
         
-        # Ejecutar el comando
-        result = subprocess.run(command, capture_output=True, text=True)
+        # Ejecutar el comando con timeout
+        stdout, stderr = run_subprocess_with_timeout(command, timeout=600)
         
-        if result.returncode != 0:
-            return f"Error en la descarga: {result.stderr}"
-            
         # Encontrar el archivo descargado
         expected_file = f'{TEMP_DOWNLOAD_PATH}/{safe_title}.mp4'
         if os.path.isfile(expected_file):
             return expected_file
         else:
-            return "No se encontró el archivo descargado"
+            return f"No se encontró el archivo descargado. Stdout: {stdout}, Stderr: {stderr}"
             
+    except subprocess.TimeoutExpired:
+        return "La descarga tomó demasiado tiempo y fue cancelada"
     except Exception as e:
         return str(e)
 
