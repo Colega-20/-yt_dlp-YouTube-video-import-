@@ -83,7 +83,7 @@
     <script>
       const form = document.getElementById("downloadForm");
       const loaderContainer = document.getElementById("loaderContainer");
-      let filename = "video.mp4"; // Nombre predeterminado
+
       form.addEventListener("submit", async function (event) {
         event.preventDefault();
         loaderContainer.style.display = "flex";
@@ -94,58 +94,26 @@
           const response = await fetch(form.action, {
             method: "POST",
             body: formData,
-            headers: {
-              Accept: "application/json", // Pedimos JSON para enlaces reutilizables
-            },
           });
 
-          const contentDisposition = response.headers.get(
-            "Content-Disposition"
-          );
+          const data = await response.json();
 
-          if (
-            contentDisposition &&
-            contentDisposition.indexOf("attachment") !== -1
-          ) {
-            const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(
-              contentDisposition
-            );
-            if (matches != null && matches[1]) {
-              filename = matches[1].replace(/['"#\u{1F300}-\u{1FAD6}]/gu, ""); // Limpiar comillas
-            }
+          if (!response.ok || !data.downloadUrl) {
+            throw new Error("No se generó un enlace de descarga válido.");
           }
 
-          if (
-            response.headers.get("content-type")?.includes("application/json")
-          ) {
-            // Modo JSON: recibimos un enlace reutilizable
-            const data = await response.json();
-            if (!response.ok || !data.downloadUrl) {
-              throw new Error("No se generó un enlace de descarga válido.");
-            }
+          const downloadLink = document.createElement("a");
+          downloadLink.href = data.downloadUrl;
+          downloadLink.download = "video.mp4"; // Nombre del archivo de descarga
+          downloadLink.style.display = "none";
+          document.body.appendChild(downloadLink);
+          downloadLink.click();
+          document.body.removeChild(downloadLink);
 
-            const downloadLink = document.createElement("a");
-            downloadLink.href = data.downloadUrl;
-            downloadLink.download = filename || "video.mp4"; // Si el backend no lo envió, usa uno por defecto
-            document.body.appendChild(downloadLink);
-            downloadLink.click();
-            document.body.removeChild(downloadLink);
-            console.log("Descarga iniciada con enlace reutilizable.");
-          } else {
-            // Modo binario: descargamos directamente el archivo
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = filename; // Usar el nombre obtenido o "video.mp4"
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            console.log("Descarga directa iniciada.");
-          }
+          console.log("Descarga iniciada con enlace reutilizable.");
         } catch (error) {
           alert(error.message);
+          document.getElementById("video_url").value = "";
         } finally {
           loaderContainer.style.display = "none";
           document.getElementById("video_url").value = "";
@@ -157,7 +125,7 @@
       const notas = {
         version: "Web: v1.1.09",
         version_js: "Js: v1.0.1.1",
-        versionB: "Version del Backend: v1.1.1",
+        versionB: "Version del Backend: v1.1.0",
         build: "Build: 16-2-2025",
         fecha: "Creacion: 11-1-2025",
         by: "By: Colega/Edisson",

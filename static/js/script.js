@@ -17,7 +17,7 @@ async function searchVideos() {
 
     resultsContainer.innerHTML = data.items
       .map(
-        (item) => `
+        (item) => `<hr>
                     <div class="video-card">
                         <img 
                             src="${item.snippet.thumbnails.high.url}" 

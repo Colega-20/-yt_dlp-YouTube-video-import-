@@ -70,94 +70,86 @@
 
         <button type="submit">Descargar</button>
       </form>
-      <hr />
-      <div id="result"></div>
-
+      <div id="downloadStatus" class="status-message"></div>
       <div id="searchResults"></div>
       <footer class="marcas1">
         <div id="©">By Edisson © 2024. All rights reserved.</div>
       </footer>
     </div>
-
+    <div
+      id="errorMessage"
+      style="display: none; color: red; margin-top: 10px"></div>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
     <script>
       const form = document.getElementById("downloadForm");
       const loaderContainer = document.getElementById("loaderContainer");
-      let filename = "video.mp4"; // Nombre predeterminado
-      form.addEventListener("submit", async function (event) {
+
+      form.addEventListener("submit", function (event) {
         event.preventDefault();
+
+        // Mostrar el loader
         loaderContainer.style.display = "flex";
 
+        // Obtener los datos del formulario
         const formData = new FormData(form);
 
-        try {
-          const response = await fetch(form.action, {
-            method: "POST",
-            body: formData,
-            headers: {
-              Accept: "application/json", // Pedimos JSON para enlaces reutilizables
-            },
-          });
+        // Crear un iframe oculto para la descarga
+        const iframe = document.createElement("iframe");
+        iframe.name = "download_frame";
+        iframe.style.display = "none";
+        document.body.appendChild(iframe);
 
-          const contentDisposition = response.headers.get(
-            "Content-Disposition"
-          );
+        // Configurar el formulario para usar el iframe
+        const downloadForm = document.createElement("form");
+        downloadForm.method = "POST";
+        downloadForm.action = form.action;
+        downloadForm.target = "download_frame";
 
-          if (
-            contentDisposition &&
-            contentDisposition.indexOf("attachment") !== -1
-          ) {
-            const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(
-              contentDisposition
-            );
-            if (matches != null && matches[1]) {
-              filename = matches[1].replace(/['"#\u{1F300}-\u{1FAD6}]/gu, ""); // Limpiar comillas
-            }
-          }
-
-          if (
-            response.headers.get("content-type")?.includes("application/json")
-          ) {
-            // Modo JSON: recibimos un enlace reutilizable
-            const data = await response.json();
-            if (!response.ok || !data.downloadUrl) {
-              throw new Error("No se generó un enlace de descarga válido.");
-            }
-
-            const downloadLink = document.createElement("a");
-            downloadLink.href = data.downloadUrl;
-            downloadLink.download = filename || "video.mp4"; // Si el backend no lo envió, usa uno por defecto
-            document.body.appendChild(downloadLink);
-            downloadLink.click();
-            document.body.removeChild(downloadLink);
-            console.log("Descarga iniciada con enlace reutilizable.");
-          } else {
-            // Modo binario: descargamos directamente el archivo
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = filename; // Usar el nombre obtenido o "video.mp4"
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            console.log("Descarga directa iniciada.");
-          }
-        } catch (error) {
-          alert(error.message);
-        } finally {
-          loaderContainer.style.display = "none";
-          document.getElementById("video_url").value = "";
+        // Copiar los datos del formulario original
+        for (let pair of formData.entries()) {
+          const input = document.createElement("input");
+          input.type = "hidden";
+          input.name = pair[0];
+          input.value = pair[1];
+          downloadForm.appendChild(input);
         }
+
+        // Agregar el formulario al documento
+        document.body.appendChild(downloadForm);
+
+        // Manejar la respuesta
+        iframe.onload = function () {
+          try {
+            const frameDoc =
+              iframe.contentDocument || iframe.contentWindow.document;
+            // Si podemos acceder al contenido del iframe, probablemente hubo un error
+            if (frameDoc.body.textContent.includes("Error")) {
+              alert("Error al descargar el video. Por favor intenta de nuevo.");
+            }
+          } catch (e) {
+            // Si no podemos acceder al contenido, probablemente la descarga comenzó
+            console.log("Descarga iniciada");
+          }
+
+          // Limpiar
+          setTimeout(() => {
+            document.body.removeChild(iframe);
+            document.body.removeChild(downloadForm);
+            loaderContainer.style.display = "none";
+            document.getElementById("video_url").value = "";
+          }, 1000);
+        };
+
+        // Enviar el formulario
+        downloadForm.submit();
       });
     </script>
     <script>
       //notas
       const notas = {
-        version: "Web: v1.1.09",
-        version_js: "Js: v1.0.1.1",
-        versionB: "Version del Backend: v1.1.1",
+        version: "Web: v1.0.2",
+        version_js: "Js: v1.0.1",
+        versionB: "Version del Backend: v1.0.5",
         build: "Build: 16-2-2025",
         fecha: "Creacion: 11-1-2025",
         by: "By: Colega/Edisson",
