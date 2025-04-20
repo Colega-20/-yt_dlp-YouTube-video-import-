@@ -4,7 +4,7 @@ import os
 import threading
 import time
 import re
-import emoji
+import urllib.parse
 
 app = Flask(__name__)
 
@@ -17,19 +17,20 @@ app.config['DOWNLOAD_FOLDER'] = DOWNLOAD_FOLDER
 last_access_times = {}
 # Tiempo de inactividad para eliminar archivos (en segundos)
 DELETE_AFTER = 300  # 5 minutos
+user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36' #user agent
 # Bloqueo para evitar problemas de concurrencia
 lock = threading.Lock()
 
 def download_video(video_url, quality):
-    user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36'
-
     try:
         ydl_opts = {
             'outtmpl': f'{DOWNLOAD_FOLDER}/%(title)s.%(ext)s',
             'format': quality,
             'merge_output_format': 'mp4',
             'user_agent': user_agent,
-            'http_headers': {'User-Agent': user_agent}
+            'http_headers': {'User-Agent': user_agent},
+            # No usamos restrictfilenames para permitir espacios
+            'noplaylist': True,  # Don't download playlists
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -42,15 +43,20 @@ def download_video(video_url, quality):
                 last_access_times[file_path] = time.time()
 
             return file_path
+        
+    except yt_dlp.utils.DownloadError as e:
+        return {"error": f"Download error: {str(e)}"}
+    except yt_dlp.utils.ExtractorError as e:
+        return {"error": f"Could not extract video information: {str(e)}"}
     except Exception as e:
-        return str(e)
+        return {"error": f"Unexpected error: {str(e)}"}
 
 
 def clean_filename(filename):
     # Eliminar emojis
-    filename = emoji.replace_emoji(filename, replace=" ")  
-    # Reemplazar # y cualquier otro carácter especial no deseado por espacios
-    filename = re.sub(r'[#]', ' ', filename)  
+    # filename = emoji.replace_emoji(filename, replace=" ")  
+    # Reemplazar caracteres especiales no deseados por espacios, pero mantener espacios normales
+    filename = re.sub(r'[#&+:;,/\\*?<>|"]', ' ', filename)  
     # Eliminar espacios repetidos y recortar
     return re.sub(r'\s+', ' ', filename).strip()
 
@@ -69,6 +75,11 @@ def download_video_route():
 
     # Descargar el video en un hilo separado
     file_path = download_video(video_url, quality)
+    
+    # Verificar si hay un mensaje de error
+    if isinstance(file_path, str) and not os.path.exists(file_path):
+        return jsonify({"error": f"Error al descargar el video: {file_path}"}), 500
+    
     # Esperar hasta que el archivo realmente exista y tenga contenido
     max_wait_time = 60  # Segundos máximo de espera
     start_time = time.time()
@@ -81,28 +92,59 @@ def download_video_route():
 
     # Validar si el archivo se generó correctamente antes de continuar
     if os.path.isfile(file_path) and os.path.getsize(file_path) > 0:
-      filename = os.path.basename(file_path)
-      clean_name = clean_filename(filename)  # Aplicar limpieza
-      # Renombrar el archivo con el nuevo nombre limpio
-      new_file_path = os.path.join(os.path.dirname(file_path), clean_name)
-      os.rename(file_path, new_file_path)  
-      file_url = f"/statica/{clean_name}"
-      # Registrar el acceso al archivo
-      with lock:
-        last_access_times[new_file_path] = time.time()
-      return jsonify({"downloadUrl": file_url})
+        filename = os.path.basename(file_path)
+        clean_name = clean_filename(filename)  # Aplicar limpieza
+        
+        # Asegúrate de que el nombre del archivo termine con .mp4
+        if not clean_name.lower().endswith('.mp4'):
+            clean_name += '.mp4'
+            
+        # Renombrar el archivo con el nuevo nombre limpio
+        new_file_path = os.path.join(os.path.dirname(file_path), clean_name)
+        
+        # Si el archivo ya existe, no sobrescribas (evita conflictos)
+        if os.path.exists(new_file_path) and new_file_path != file_path:
+            # Agrega un número aleatorio para hacerlo único
+            import random
+            base_name = os.path.splitext(clean_name)[0]
+            clean_name = f"{base_name} {random.randint(1000, 9999)}.mp4"
+            new_file_path = os.path.join(os.path.dirname(file_path), clean_name)
+            
+        # Ahora sí, renombra el archivo
+        if file_path != new_file_path:
+            os.rename(file_path, new_file_path)
+            
+        # URL segura para usar en el navegador (codifica los espacios y caracteres especiales)
+        safe_filename = urllib.parse.quote(clean_name)
+        file_url = f"/statica/{safe_filename}"
+        
+        # Registrar el acceso al archivo
+        with lock:
+            last_access_times[new_file_path] = time.time()
+            
+        return jsonify({"downloadUrl": file_url})
 
     return jsonify({"error": f"Error al descargar el video: {file_path}"}), 500
+
 # Nueva ruta para servir archivos descargados
 @app.route('/statica/<path:filename>', methods=['GET'])
 def serve_file(filename):
-    return send_from_directory(app.config['DOWNLOAD_FOLDER'], filename, as_attachment=True, conditional=True)
+    # Decodificar el nombre del archivo para manejar caracteres especiales en la URL
+    decoded_filename = urllib.parse.unquote(filename)
+    
+    # Actualizar el tiempo de último acceso
+    full_path = os.path.join(app.config['DOWNLOAD_FOLDER'], decoded_filename)
+    if os.path.exists(full_path):
+        with lock:
+            last_access_times[full_path] = time.time()
+    
+    return send_from_directory(app.config['DOWNLOAD_FOLDER'], decoded_filename, as_attachment=True, conditional=True)
 
 
 def cleanup_files():
     """Elimina archivos que han estado inactivos por más de DELETE_AFTER segundos"""
     while True:
-        time.sleep(10)  # Verificar cada 10 segundos
+        time.sleep(20)  # Verificar cada 10 segundos
 
         with lock:
             current_time = time.time()
@@ -124,3 +166,6 @@ cleanup_thread.start()
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5011, debug=True)
+    input("Presiona Enter para salir...")
+
+

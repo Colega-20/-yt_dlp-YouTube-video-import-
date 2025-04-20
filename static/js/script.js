@@ -7,6 +7,9 @@ async function searchVideos() {
   const searchInput = document.getElementById("searchInput").value;
   const resultsContainer = document.getElementById("searchResults");
 
+  // Add this line to ensure grid layout is visible
+  resultsContainer.className = "debug-grid";
+
   try {
     const response = await fetch(
       `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=12&q=${encodeURIComponent(
@@ -17,24 +20,24 @@ async function searchVideos() {
 
     resultsContainer.innerHTML = data.items
       .map(
-        (item) => `<hr>
-                    <div class="video-card">
-                        <img 
-                            src="${item.snippet.thumbnails.high.url}" 
-                            alt="${item.snippet.title}"
-                            class="thumbnail"
-                        />
-                        <div class="video-info">
-                            <div class="video-title">${item.snippet.title}</div>
-                            <button 
-                                onclick="copyVideoUrl('https://www.youtube.com/watch?v=${item.id.videoId}')"
-                                class="copy-link"
-                            >
-                                Copiar enlace
-                            </button>
-                        </div>
-                    </div>
-                `
+        (item) => `
+          <div class="video-card">
+            <img 
+              src="${item.snippet.thumbnails.high.url}"
+              alt="${item.snippet.title}"
+              class="thumbnail"
+            />
+            <div class="video-info">
+              <div class="video-title">${item.snippet.title}</div>
+              <button 
+                onclick="copyVideoUrl('https://www.youtube.com/watch?v=${item.id.videoId}')"
+                class="copy-link"
+              >
+                Copiar enlace
+              </button>
+            </div>
+          </div>
+        `
       )
       .join("");
   } catch (error) {
@@ -42,6 +45,7 @@ async function searchVideos() {
     resultsContainer.innerHTML =
       "<p>Error al buscar videos. Por favor, intenta de nuevo.</p>";
   }
+  document.getElementById("searchResults").style.margin = "2rem 0";
 }
 
 function copyVideoUrl(url) {
