@@ -17,7 +17,7 @@ COPY . .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Expón el puerto que necesita tu aplicación
-EXPOSE 8000
+EXPOSE 5011
 
 # Comando para ejecutar tu aplicación
 CMD ["python", "app.py"]
