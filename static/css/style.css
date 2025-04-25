@@ -52,7 +52,6 @@ body {
   -webkit-appearance: none;
   -moz-appearance: none;
   width: 160px;
-  font-size: 16px;
   font-weight: 500;
   position: relative;
   padding-right: 32px; /* Espacio para la flecha */
@@ -66,7 +65,6 @@ body {
   background-color: #2d2d2d;
   color: white;
   padding: 12px;
-  font-size: 15px;
 }
 
 /* Estilo para la opción seleccionada en el dropdown */
@@ -91,7 +89,7 @@ body {
 /* Firefox */
 .quality-selector {
   text-indent: 0.01px;
-  text-overflow: "";
+  /* text-overflow: ""; */
 }
 
 /* Estilo para cuando el select está abierto */
@@ -214,7 +212,9 @@ button:hover {
 
 #searchResults {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(2, 1fr);
+
+  /* grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); */
   gap: 1.5rem;
   margin-top: 2rem;
 }
@@ -311,6 +311,9 @@ button:hover {
   button {
     padding: 0.8rem 1.5rem;
   }
+  #searchResults {
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  }
 }
 /* Estilos base del formulario */
 #downloadForm {
@@ -337,7 +340,7 @@ p {
 /* Estilos para el selector */
 .quality-selector {
   font-weight: 600;
-  padding: 0.75rem;
+  padding: 1rem;
   border: 2px solid var(--glass-border);
   border-radius: var(--border-radius);
   font-size: 1rem;

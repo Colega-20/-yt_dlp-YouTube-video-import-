@@ -70,6 +70,10 @@
             value="bestvideo[height<=360][vcodec^=avc1]+bestaudio[ext=mp4]/best[vcodec^=avc1]">
             (360p)
           </option>
+          <option
+            value="bestaudio[ext=m4a]/best --extract-audio --audio-format mp3 --audio-quality 320K">
+            Solo Audio (MP3 320)
+          </option>
         </select>
 
         <button type="submit">Descargar</button>
@@ -159,8 +163,8 @@
     <script>
       //notas
       const notas = {
-        version: "Web: v1.1.4",
-        version_js: "Js: v1.0.4",
+        version: "Web: v1.2.0",
+        version_js: "Js: v1.1",
         versionB: "Version del Backend: v1.1.1",
         build: "Build: 11-4-2025",
         fecha: "Creacion: 11-1-2025",

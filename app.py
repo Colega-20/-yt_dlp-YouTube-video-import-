@@ -23,21 +23,70 @@ lock = threading.Lock()
 
 def download_video(video_url, quality):
     try:
+        # Verificar si la opción seleccionada es para extraer solo audio
+        audio_only = False
+        audio_opts = {}
+        
+        if "--extract-audio" in quality:
+            audio_only = True
+            # Separar los parámetros de calidad de los parámetros de extracción de audio
+            quality_parts = quality.split(" --extract-audio")
+            base_format = quality_parts[0]
+            
+            # Configurar opciones para extraer solo audio
+            audio_opts = {
+                'extractaudio': True,
+                'audioformat': 'mp3',
+                'audioquality': '320K',
+                'outtmpl': f'{DOWNLOAD_FOLDER}/%(title)s.%(ext)s',
+                'writethumbnail': True,  # Descargar la miniatura
+                     'postprocessors': [
+                    {
+                        'key': 'FFmpegExtractAudio',
+                        'preferredcodec': 'mp3',
+                        'preferredquality': '320',
+                    },
+                    {
+                       'key': 'FFmpegThumbnailsConvertor',  # Convertir miniatura a un formato más compatible
+                       'format': 'WebP',
+                    },
+                    {
+                        'key': 'EmbedThumbnail',  # Incrusta la miniatura en el archivo MP3
+                    },
+                    {
+                        'key': 'FFmpegMetadata',  # Mantener los metadatos
+                        'add_metadata': True,
+                    }
+                ],
+                'format': base_format,
+            }
+        
+        # Configuración base para todos los tipos de descargas
         ydl_opts = {
             'outtmpl': f'{DOWNLOAD_FOLDER}/%(title)s.%(ext)s',
-            'format': quality,
-            'merge_output_format': 'mp4',
+            'format': quality if not audio_only else None,
+            'merge_output_format': 'mp4' if not audio_only else None,
             'user_agent': user_agent,
             'http_headers': {'User-Agent': user_agent},
-            # No usamos restrictfilenames para permitir espacios
             'noplaylist': True,  # Don't download playlists
         }
+        
+        # Si es solo audio, actualizar las opciones
+        if audio_only:
+            ydl_opts.update(audio_opts)
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(video_url, download=True)
             file_path = ydl.prepare_filename(info)
-            base_path = os.path.splitext(file_path)[0]
-            file_path = f"{base_path}.mp4"
+            
+            # Determinar la extensión correcta basada en si es solo audio o video
+            if audio_only:
+                base_path = os.path.splitext(file_path)[0]
+                file_path = f"{base_path}.mp3"
+            else:
+                base_path = os.path.splitext(file_path)[0]
+                file_path = f"{base_path}.mp4"
+                
             # Registrar el acceso al archivo
             with lock:
                 last_access_times[file_path] = time.time()
@@ -50,7 +99,6 @@ def download_video(video_url, quality):
         return {"error": f"Could not extract video information: {str(e)}"}
     except Exception as e:
         return {"error": f"Unexpected error: {str(e)}"}
-
 
 def clean_filename(filename):
     # Eliminar emojis
@@ -73,12 +121,18 @@ def download_video_route():
     if not video_url:
         return jsonify({"error": "No se proporcionó una URL"}), 400
 
-    # Descargar el video en un hilo separado
+    # Verificar si es una descarga de solo audio
+    audio_only = "--extract-audio" in quality
+    
+    # Descargar el video o audio en un hilo separado
     file_path = download_video(video_url, quality)
     
     # Verificar si hay un mensaje de error
-    if isinstance(file_path, str) and not os.path.exists(file_path):
-        return jsonify({"error": f"Error al descargar el video: {file_path}"}), 500
+    if isinstance(file_path, dict) and "error" in file_path:
+        return jsonify(file_path), 500
+    
+    if not os.path.exists(file_path):
+        return jsonify({"error": f"Error al descargar: {file_path}"}), 500
     
     # Esperar hasta que el archivo realmente exista y tenga contenido
     max_wait_time = 60  # Segundos máximo de espera
@@ -95,9 +149,10 @@ def download_video_route():
         filename = os.path.basename(file_path)
         clean_name = clean_filename(filename)  # Aplicar limpieza
         
-        # Asegúrate de que el nombre del archivo termine con .mp4
-        if not clean_name.lower().endswith('.mp4'):
-            clean_name += '.mp4'
+        # Asegúrate de que el nombre del archivo termine con la extensión correcta
+        expected_ext = '.mp3' if audio_only else '.mp4'
+        if not clean_name.lower().endswith(expected_ext):
+            clean_name += expected_ext
             
         # Renombrar el archivo con el nuevo nombre limpio
         new_file_path = os.path.join(os.path.dirname(file_path), clean_name)
@@ -107,7 +162,7 @@ def download_video_route():
             # Agrega un número aleatorio para hacerlo único
             import random
             base_name = os.path.splitext(clean_name)[0]
-            clean_name = f"{base_name} {random.randint(1000, 9999)}.mp4"
+            clean_name = f"{base_name} {random.randint(1000, 9999)}{expected_ext}"
             new_file_path = os.path.join(os.path.dirname(file_path), clean_name)
             
         # Ahora sí, renombra el archivo
@@ -124,7 +179,7 @@ def download_video_route():
             
         return jsonify({"downloadUrl": file_url})
 
-    return jsonify({"error": f"Error al descargar el video: {file_path}"}), 500
+    return jsonify({"error": f"Error al descargar: {file_path}"}), 500
 
 # Nueva ruta para servir archivos descargados
 @app.route('/statica/<path:filename>', methods=['GET'])
