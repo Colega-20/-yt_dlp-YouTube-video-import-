@@ -5,174 +5,127 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Descargar Videos de YouTube</title>
+    <title>YouTube Music Downloader</title>
     <!-- Custom Styles -->
     <link
       rel="icon"
-      href="https://cdn-icons-png.flaticon.com/512/12044/12044575.png"
+      href="https://cdn-icons-png.flaticon.com/64/16037/16037918.png "
       type="image/x-icon" />
     <link
       rel="stylesheet"
       href="{{ url_for('static', filename='css/style.css') }}" />
   </head>
   <body>
-    <!-- Agregar el contenedor del loader -->
-    <div class="loader-container" id="loaderContainer">
-      <div class="loader">
-        <div class="loader-text"></div>
+    <form id="download-form" class="from">
+      <h1>YouTube Music Downloader</h1>
+      <input
+        type="text"
+        name="youtube-url"
+        id="youtube-url"
+        class="link YouTube"
+        placeholder="Inserte YouTube URL"
+        oninput="showThumbnail()"
+        required />
+      <button type="button" class="Get" onclick="downloadAudio()">
+        Obtener y Descargar
+      </button>
+      <!-- Contenedor para la miniatura -->
+      <div id="thumbnail-container" style="margin-top: 20px; display: none">
+        <img
+          id="video-thumbnail"
+          style="border-radius: 5px; max-width: 314px; width: 100%"
+          alt="Video thumbnail" />
+        <p id="video-title" style="margin-top: 10px; font-weight: bold"></p>
       </div>
-      <br />
-      <div>
-        <p>Cargando...</p>
-      </div>
-    </div>
-
-    <div class="container">
-      <h1>Descargar Videos de YouTube</h1>
-
-      <div class="search-container">
-        <div class="search-box">
-          <input
-            type="text"
-            id="searchInput"
-            placeholder="Buscar videos en YouTube..." />
-          <button id="Buscar" onclick="searchVideos()">Buscar</button>
-        </div>
-      </div>
-      <hr />
-      <form action="/download_video" method="POST" id="downloadForm">
-        <input
-          type="text"
-          id="video_url"
-          name="video_url"
-          required
-          placeholder="Pega aquí el enlace del video..." />
-
-        <select name="quality" select class="quality-selector" id="quality">
-          <option
-            value="bestvideo[vcodec^=avc1]+bestaudio[ext=mp4]/best[vcodec^=avc1]">
-            Mejor calidad
-          </option>
-          <option
-            value="bestvideo[height<=1080][vcodec^=avc1]+bestaudio[ext=mp4]/best[vcodec^=avc1]">
-            Full HD (1080p)
-          </option>
-          <option
-            value="bestvideo[height<=720][vcodec^=avc1]+bestaudio[ext=mp4]/best[vcodec^=avc1]"
-            selected>
-            HD (720p)
-          </option>
-          <option
-            value="bestvideo[height<=480][vcodec^=avc1]+bestaudio[ext=mp4]/best[vcodec^=avc1]">
-            SD (480p)
-          </option>
-          <option
-            value="bestvideo[height<=360][vcodec^=avc1]+bestaudio[ext=mp4]/best[vcodec^=avc1]">
-            (360p)
-          </option>
-          <option
-            value="bestaudio[ext=m4a]/best --extract-audio --audio-format mp3 --audio-quality 320K">
-            Solo Audio (MP3 320)
-          </option>
-        </select>
-
-        <button type="submit">Descargar</button>
-      </form>
-      <hr />
       <div id="result"></div>
-
-      <div id="searchResults"></div>
-      <footer class="marcas1">
+      <div class="marcas1">
         <div id="©">By Edisson © 2024. All rights reserved.</div>
-      </footer>
+      </div>
+    </form>
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" style="display: none">
+      <div class="loading-content">
+        <p>Procesando...</p>
+      </div>
     </div>
-
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <canvas id="c"></canvas>
+    <!-- Logica -->
     <script>
-      const form = document.getElementById("downloadForm");
-      const loaderContainer = document.getElementById("loaderContainer");
-      let filename = "video.mp4"; // Nombre predeterminado
-      form.addEventListener("submit", async function (event) {
-        event.preventDefault();
-        loaderContainer.style.display = "flex";
+      // Función para extraer el ID del video de YouTube
+      function getYouTubeVideoId(url) {
+        const regExp =
+          /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+        const match = url.match(regExp);
+        return match && match[2].length === 11 ? match[2] : null;
+      }
 
-        const formData = new FormData(form);
+      // Función para mostrar la miniatura
+      function showThumbnail() {
+        const url = document.getElementById("youtube-url").value;
+        const videoId = getYouTubeVideoId(url);
+        const thumbnailContainer = document.getElementById(
+          "thumbnail-container"
+        );
+        const thumbnailImg = document.getElementById("video-thumbnail");
 
-        try {
-          const response = await fetch(form.action, {
-            method: "POST",
-            body: formData,
-            headers: {
-              Accept: "application/json", // Pedimos JSON para enlaces reutilizables
-            },
-          });
-
-          const contentDisposition = response.headers.get(
-            "Content-Disposition"
-          );
-
-          if (
-            contentDisposition &&
-            contentDisposition.indexOf("attachment") !== -1
-          ) {
-            const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(
-              contentDisposition
-            );
-            if (matches != null && matches[1]) {
-              filename = matches[1].replace(/['"#\u{1F300}-\u{1FAD6}]/gu, ""); // Limpiar comillas
-            }
-          }
-
-          if (
-            response.headers.get("content-type")?.includes("application/json")
-          ) {
-            // Modo JSON: recibimos un enlace reutilizable
-            const data = await response.json();
-            if (!response.ok || !data.downloadUrl) {
-              throw new Error("No se generó un enlace de descarga válido.");
-            }
-
-            const downloadLink = document.createElement("a");
-            downloadLink.href = data.downloadUrl;
-            downloadLink.download = filename || "video.mp4"; // Si el backend no lo envió, usa uno por defecto
-            document.body.appendChild(downloadLink);
-            downloadLink.click();
-            document.body.removeChild(downloadLink);
-            console.log("Descarga iniciada con enlace reutilizable.");
-          } else {
-            // Modo binario: descargamos directamente el archivo
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = filename; // Usar el nombre obtenido o "video.mp4"
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            console.log("Descarga directa iniciada.");
-          }
-        } catch (error) {
-          alert(error.message);
-        } finally {
-          loaderContainer.style.display = "none";
-          document.getElementById("video_url").value = "";
+        if (videoId) {
+          // Mostrar la miniatura
+          thumbnailImg.src = `https://img.youtube.com/vi/${videoId}/0.jpg`;
+          thumbnailContainer.style.display = "block";
+          thumbnailImg.style.display = "block";
+        } else {
+          thumbnailContainer.style.display = "none";
+          thumbnailImg.style.display = "none";
         }
-      });
+      }
+
+      async function downloadAudio() {
+        const url = document.getElementById("youtube-url").value;
+
+        // Mostrar overlay de carga
+        document.getElementById("loading-overlay").style.display = "flex";
+
+        const response = await fetch("/download", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ url }),
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          // Descargar automáticamente sin mostrar botón
+          const decodedLink = decodeURIComponent(result.download_link);
+          window.location.href = decodedLink;
+        } else {
+          document.getElementById(
+            "result"
+          ).innerHTML = `<p style="color: red;">Error: ${result.error}</p>`;
+        }
+
+        document.getElementById("youtube-url").value = ""; // Limpiar el input
+        document.getElementById("video-thumbnail").style.display = "none";
+        document.getElementById("thumbnail-container").style.display = "none";
+        // Ocultar overlay de carga
+        document.getElementById("loading-overlay").style.display = "none";
+      }
     </script>
+
+    <!-- Canva matrix -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <!-- Notas -->
     <script>
-      //notas
       const notas = {
-        version: "Web: v1.2.0",
-        version_js: "Js: v1.1",
+        version: "Version del cliente: v1.0.3.2",
         versionB: "Version del Backend: v1.1.1",
-        build: "Build: 11-4-2025",
-        fecha: "Creacion: 11-1-2025",
+        build: "Build: 2.5.2025",
+        fecha: "Creacion: 13-11-2024",
         by: "By: Colega/Edisson",
       };
 
       console.log(notas["version"]);
-      console.log(notas["version_js"]);
       console.log(notas["versionB"]);
       console.log(notas["build"]);
       console.log(notas["fecha"]);
