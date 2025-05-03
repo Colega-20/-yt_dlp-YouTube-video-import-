@@ -21,7 +21,7 @@ user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTM
 # Bloqueo para evitar problemas de concurrencia
 lock = threading.Lock()
 
-def download_video(video_url, quality, cookies_file="cookies.txt", cookies_dict=None):
+def download_video(video_url, quality, cookies_file='cookies.txt'):
     try:
         # Verificar si la opción seleccionada es para extraer solo audio
         audio_only = False
@@ -40,7 +40,7 @@ def download_video(video_url, quality, cookies_file="cookies.txt", cookies_dict=
                 'audioquality': '320K',
                 'outtmpl': f'{DOWNLOAD_FOLDER}/%(title)s.%(ext)s',
                 'writethumbnail': True,  # Descargar la miniatura
-                     'postprocessors': [
+                'postprocessors': [
                     {
                         'key': 'FFmpegExtractAudio',
                         'preferredcodec': 'mp3',
@@ -69,13 +69,8 @@ def download_video(video_url, quality, cookies_file="cookies.txt", cookies_dict=
             'user_agent': user_agent,
             'http_headers': {'User-Agent': user_agent},
             'noplaylist': True,  # Don't download playlists
+            'cookiefile': cookies_file,  # Agregar soporte para cookies
         }
-        
-        # Agregar soporte para cookies
-        if cookies_file:
-            ydl_opts['cookiefile'] = cookies_file
-        elif cookies_dict:
-            ydl_opts['cookiesfrombrowser'] = cookies_dict
         
         # Si es solo audio, actualizar las opciones
         if audio_only:
@@ -105,7 +100,6 @@ def download_video(video_url, quality, cookies_file="cookies.txt", cookies_dict=
         return {"error": f"Could not extract video information: {str(e)}"}
     except Exception as e:
         return {"error": f"Unexpected error: {str(e)}"}
-
 def clean_filename(filename):
     # Eliminar emojis
     # filename = emoji.replace_emoji(filename, replace=" ")  
@@ -228,3 +222,5 @@ cleanup_thread.start()
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5011, debug=True)
     input("Presiona Enter para salir...")
+
+
