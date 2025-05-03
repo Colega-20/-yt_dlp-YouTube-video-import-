@@ -194,7 +194,6 @@ button {
   background: var(--glass-bg);
   color: var(--text-color);
   border: 2px solid var(--glass-border);
-  padding: 1rem 2rem;
   border-radius: var(--border-radius);
   font-size: 1rem;
   font-weight: 600;
@@ -268,12 +267,17 @@ button:hover {
 }
 
 .button-group {
-  position: absolute;
   bottom: 1rem;
   left: 1rem;
   right: 1rem;
   display: flex;
-  gap: 0.5rem;
+  justify-content: space-between;
+}
+
+.copy-link,
+.watch-overlay {
+  width: 48%;
+  padding: 1rem 0.4rem;
 }
 
 .copy-button,
@@ -351,8 +355,10 @@ p {
 }
 
 /* Estilos para el botón */
-button[type="submit"] {
+button[type="submit"],
+#Buscar {
   cursor: pointer;
+  padding: 1rem 2rem;
   transition: background-color 0.3s ease;
 }
 
@@ -393,6 +399,88 @@ button[type="submit"]:hover {
   text-align: center;
 }
 
+/* iframe and video*/
+/* Estilos para el overlay de video */
+/* iframe and video*/
+
+#video-overlay {
+  display: flex;
+  width: 100%;
+  position: fixed;
+  height: 100%;
+  left: 0;
+  top: 0;
+  z-index: 1;
+  background-color: rgba(0, 0, 0, 0.9);
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Contenedor del iframe para permitir indicador de carga */
+.iframe-container {
+  width: 80%;
+  height: 70%;
+  position: relative;
+  margin-bottom: 15px;
+}
+
+/* Estilos para el iframe */
+.iframe-container iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* Estilos para el indicador de carga */
+.loading-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 18px;
+  text-align: center;
+  background-color: transparent;
+  padding: 10px 20px;
+  border-radius: 5px;
+}
+
+/* Botón para cerrar el overlay */
+#cerrar {
+  background-color: #ff0000;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 20px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.3s;
+}
+
+#cerrar:hover {
+  background-color: #cc0000;
+}
+
+/* Añadir un efecto de transición suave al overlay */
+#video-overlay {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Asegurarse que el botón "Ver video" tiene un estilo distintivo */
+
+.watch-overlay:hover {
+  background-color: rgba(0, 153, 255, 0.25);
+}
 /* Estilos para el loader */
 .loader-container {
   position: fixed;

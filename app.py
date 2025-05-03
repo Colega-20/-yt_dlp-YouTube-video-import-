@@ -38,7 +38,6 @@ def download_video(video_url, quality, cookies_file='cookies.txt'):
                 'extractaudio': True,
                 'audioformat': 'mp3',
                 'audioquality': '320K',
-                'outtmpl': f'{DOWNLOAD_FOLDER}/%(title)s.%(ext)s',
                 'writethumbnail': True,  # Descargar la miniatura
                 'postprocessors': [
                     {
@@ -46,10 +45,10 @@ def download_video(video_url, quality, cookies_file='cookies.txt'):
                         'preferredcodec': 'mp3',
                         'preferredquality': '320',
                     },
-                    # {
-                    #    'key': 'FFmpegThumbnailsConvertor',  # Convertir miniatura a un formato más compatible
-                    #    'format': 'WebP',
-                    # },
+                    {
+                       'key': 'FFmpegThumbnailsConvertor',  # Convertir miniatura a un formato más compatible
+                       'format': 'WebP',
+                    },
                     {
                         'key': 'EmbedThumbnail',  # Incrusta la miniatura en el archivo MP3
                     },
@@ -100,6 +99,7 @@ def download_video(video_url, quality, cookies_file='cookies.txt'):
         return {"error": f"Could not extract video information: {str(e)}"}
     except Exception as e:
         return {"error": f"Unexpected error: {str(e)}"}
+    
 def clean_filename(filename):
     # Eliminar emojis
     # filename = emoji.replace_emoji(filename, replace=" ")  
