@@ -27,68 +27,80 @@ def download_video(video_url, quality, cookies_file='cookies.txt'):
         # Verificar si la opción seleccionada es para extraer solo audio
         audio_only = False
         audio_opts = {}
-
+        
         if "--extract-audio" in quality:
             audio_only = True
+            # Separar los parámetros de calidad de los parámetros de extracción de audio
             quality_parts = quality.split(" --extract-audio")
             base_format = quality_parts[0]
             
+            # Configurar opciones para extraer solo audio con metadatos y thumbnail
             audio_opts = {
                 'extractaudio': True,
                 'audioformat': 'mp3',
                 'audioquality': '320K',
                 'outtmpl': f'{DOWNLOAD_FOLDER}/%(title)s.%(ext)s',
-                'writethumbnail': True,
+                'writethumbnail': True,  # Descargar la miniatura
                 'postprocessors': [
-                    {'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3', 'preferredquality': '320'},
-                    {'key': 'FFmpegThumbnailsConvertor', 'format': 'WebP'},
-                    {'key': 'EmbedThumbnail'},
-                    {'key': 'FFmpegMetadata', 'add_metadata': True}
+                    {
+                        'key': 'FFmpegExtractAudio',
+                        'preferredcodec': 'mp3',
+                        'preferredquality': '320',
+                    },
+                    {
+                       'key': 'FFmpegThumbnailsConvertor',  # Convertir miniatura a un formato más compatible
+                       'format': 'WebP',
+                    },
+                    {
+                        'key': 'EmbedThumbnail',  # Incrusta la miniatura en el archivo MP3
+                    },
+                    {
+                        'key': 'FFmpegMetadata',  # Mantener los metadatos
+                        'add_metadata': True,
+                    }
                 ],
                 'format': base_format,
             }
-
-        # Configuración base para ydl
+        
+        # Configuración base para todos los tipos de descargas
         ydl_opts = {
             'outtmpl': f'{DOWNLOAD_FOLDER}/%(title)s.%(ext)s',
             'format': quality if not audio_only else None,
             'merge_output_format': 'mp4' if not audio_only else None,
             'user_agent': user_agent,
             'http_headers': {'User-Agent': user_agent},
-            'no_check_certificate': True,
-            'prefer_free_formats': True,
-            'noplaylist': True,
+            'cookiefile': cookies_file,  # Agregar soporte para cookies
+            'noplaylist': True,  # Don't download playlists
         }
-
-        # Agregar cookies si el archivo existe y no está vacío
-        if os.path.isfile(cookies_file) and os.path.getsize(cookies_file) > 0:
-            print("[INFO] Usando cookies.txt para autenticación.")
-            ydl_opts['cookiefile'] = cookies_file
-        else:
-            print("[ADVERTENCIA] No se encontró 'cookies.txt' válido. Continuando sin cookies.")
-
+        
+        # Si es solo audio, actualizar las opciones
         if audio_only:
             ydl_opts.update(audio_opts)
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(video_url, download=True)
             file_path = ydl.prepare_filename(info)
-
-            base_path = os.path.splitext(file_path)[0]
-            file_path = f"{base_path}.mp3" if audio_only else f"{base_path}.mp4"
-
+            
+            # Determinar la extensión correcta basada en si es solo audio o video
+            if audio_only:
+                base_path = os.path.splitext(file_path)[0]
+                file_path = f"{base_path}.mp3"
+            else:
+                base_path = os.path.splitext(file_path)[0]
+                file_path = f"{base_path}.mp4"
+                
+            # Registrar el acceso al archivo
             with lock:
                 last_access_times[file_path] = time.time()
 
             return file_path
-
+        
     except yt_dlp.utils.DownloadError as e:
         return {"error": f"Download error: {str(e)}"}
     except yt_dlp.utils.ExtractorError as e:
         return {"error": f"Could not extract video information: {str(e)}"}
     except Exception as e:
         return {"error": f"Unexpected error: {str(e)}"}
-
     
 def clean_filename(filename):
     # Eliminar emojis
@@ -108,13 +120,6 @@ def download_video_route():
     video_url = request.form.get('video_url')
     quality = request.form.get('quality', 'best')
 
-    # Detectar si hay flags extra como --extract-audio, etc.
-    flags = []
-    if "--" in quality:
-        parts = quality.split()
-        quality = parts[0]
-        flags = parts[1:]
-        
     if not video_url:
         return jsonify({"error": "No se proporcionó una URL"}), 400
 
