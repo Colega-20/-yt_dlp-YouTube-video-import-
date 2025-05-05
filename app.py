@@ -22,7 +22,8 @@ user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTM
 # Bloqueo para evitar problemas de concurrencia
 lock = threading.Lock()
 
-def download_video(video_url, quality, cookies_file='cookies.txt'):
+def download_video(video_url, quality):
+    cookies_file='cookies.txt'
     try:
         # Verificar si la opción seleccionada es para extraer solo audio
         audio_only = False
@@ -70,6 +71,9 @@ def download_video(video_url, quality, cookies_file='cookies.txt'):
             'user_agent': user_agent,
             'http_headers': {'User-Agent': user_agent},
             'cookiefile': cookies_file,  # Agregar soporte para cookies
+            'no_check_certificate': True,
+            'prefer_free_formats': True,
+            'noplaylist': True,
             'noplaylist': True,  # Don't download playlists
         }
         
