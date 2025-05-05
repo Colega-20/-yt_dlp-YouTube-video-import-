@@ -11,6 +11,7 @@ app = Flask(__name__)
 
 # Carpeta donde se guardarán los videos descargados
 DOWNLOAD_FOLDER = "./descargas"
+cookies_file='cookies.txt'
 os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
 # Configurar Flask para servir archivos estáticos desde la carpeta de descargas
 app.config['DOWNLOAD_FOLDER'] = DOWNLOAD_FOLDER
@@ -22,7 +23,7 @@ user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTM
 # Bloqueo para evitar problemas de concurrencia
 lock = threading.Lock()
 
-def download_video(video_url, quality, cookies_file='cookies.txt'):
+def download_video(video_url, quality):
     try:
         # Verificar si la opción seleccionada es para extraer solo audio
         audio_only = False
@@ -64,12 +65,12 @@ def download_video(video_url, quality, cookies_file='cookies.txt'):
         
         # Configuración base para todos los tipos de descargas
         ydl_opts = {
+            'cookiefile': cookies_file,  # Agregar soporte para cookies
             'outtmpl': f'{DOWNLOAD_FOLDER}/%(title)s.%(ext)s',
             'format': quality if not audio_only else None,
             'merge_output_format': 'mp4' if not audio_only else None,
             'user_agent': user_agent,
             'http_headers': {'User-Agent': user_agent},
-            'cookiefile': cookies_file,  # Agregar soporte para cookies
             'noplaylist': True,  # Don't download playlists
         }
         
