@@ -5,6 +5,7 @@ import threading
 import time
 import re
 import urllib.parse
+import mutagen
 
 app = Flask(__name__)
 
@@ -21,7 +22,7 @@ user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTM
 # Bloqueo para evitar problemas de concurrencia
 lock = threading.Lock()
 
-def download_video(video_url, quality, cookies_file='cookies.txt'):
+def download_video(video_url, quality):
     try:
         # Verificar si la opción seleccionada es para extraer solo audio
         audio_only = False
@@ -33,11 +34,12 @@ def download_video(video_url, quality, cookies_file='cookies.txt'):
             quality_parts = quality.split(" --extract-audio")
             base_format = quality_parts[0]
             
-            # Configurar opciones para extraer solo audio
+            # Configurar opciones para extraer solo audio con metadatos y thumbnail
             audio_opts = {
                 'extractaudio': True,
                 'audioformat': 'mp3',
                 'audioquality': '320K',
+                'outtmpl': f'{DOWNLOAD_FOLDER}/%(title)s.%(ext)s',
                 'writethumbnail': True,  # Descargar la miniatura
                 'postprocessors': [
                     {
@@ -68,7 +70,6 @@ def download_video(video_url, quality, cookies_file='cookies.txt'):
             'user_agent': user_agent,
             'http_headers': {'User-Agent': user_agent},
             'noplaylist': True,  # Don't download playlists
-            'cookiefile': cookies_file,  # Agregar soporte para cookies
         }
         
         # Si es solo audio, actualizar las opciones
