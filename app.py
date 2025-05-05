@@ -50,7 +50,7 @@ def download_video(video_url, quality):
                     },
                     {
                        'key': 'FFmpegThumbnailsConvertor',  # Convertir miniatura a un formato más compatible
-                       'format': 'WebP',
+                       'format': 'jpg',
                     },
                     {
                         'key': 'EmbedThumbnail',  # Incrusta la miniatura en el archivo MP3
@@ -63,15 +63,28 @@ def download_video(video_url, quality):
                 'format': base_format,
             }
         
+        # Opción para forzar el formato correcto con cookies
+        if os.path.exists(cookies_file) and not audio_only:
+            # Cuando usamos cookies, necesitamos ajustar la estrategia de formato
+            # Extraer la altura del formato solicitado
+            height_match = re.search(r'height<=(\d+)', quality)
+            target_height = int(height_match.group(1)) if height_match else 720  # Default a 720p
+            
+            # Usar una estrategia más simple pero efectiva con cookies
+            format_str = f'bestvideo[height<={target_height}]+bestaudio/best[height<={target_height}]'
+        else:
+            format_str = quality if not audio_only else None
+        
         # Configuración base para todos los tipos de descargas
         ydl_opts = {
-            'cookiefile': cookies_file,  # Agregar soporte para cookies
+            'cookiefile': cookies_file if os.path.exists(cookies_file) else None,
             'outtmpl': f'{DOWNLOAD_FOLDER}/%(title)s.%(ext)s',
-            'format': quality if not audio_only else None,
+            'format': format_str,
             'merge_output_format': 'mp4' if not audio_only else None,
             'user_agent': user_agent,
             'http_headers': {'User-Agent': user_agent},
             'noplaylist': True,  # Don't download playlists
+            'verbose': True,  # Activar modo verboso para depuración
         }
         
         # Si es solo audio, actualizar las opciones
@@ -115,6 +128,18 @@ def clean_filename(filename):
 @app.route('/', methods=['GET'])
 def home():
     return render_template('index.html')
+
+@app.route('/update_cookies', methods=['POST'])
+def update_cookies():
+    if 'cookies_file' not in request.files:
+        return jsonify({"error": "No se proporcionó un archivo de cookies"}), 400
+        
+    file = request.files['cookies_file']
+    if file.filename == '':
+        return jsonify({"error": "No se seleccionó un archivo"}), 400
+        
+    file.save(cookies_file)
+    return jsonify({"success": "Archivo de cookies actualizado correctamente"})
 
 @app.route('/download_video', methods=['POST'])
 def download_video_route():
