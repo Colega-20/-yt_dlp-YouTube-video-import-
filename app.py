@@ -12,7 +12,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from mutagen.mp3 import MP3
 from mutagen.id3 import ID3, APIC, TIT2, TPE1, TALB, error
-
+cookies_file='cookies.txt'
 # Configurar logging para depuración
 logging.basicConfig(level=logging.DEBUG, 
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -119,15 +119,7 @@ def download_video(video_url, quality):
             'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36',
             'http_headers': {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36'},
             'no_check_certificate': True,
-            'cookiesfrombrowser': (
-            'chrome',         # Google Chrome
-            'chromium',       # Chromium
-            'brave',          # Brave Browser
-            'edge',           # Microsoft Edge
-            'opera',          # Opera
-            'vivaldi',        # Vivaldi
-            'firefox',        # Mozilla Firefox
-             ),
+            'cookiefile': cookies_file,  # Agregar soporte para cookies
             'noplaylist': True,  # Don't download playlists
             'quiet': False,
             'verbose': True,     # Aumentar la verbosidad para depuración
