@@ -18,34 +18,29 @@ app.config['DOWNLOAD_FOLDER'] = DOWNLOAD_FOLDER
 last_access_times = {}
 # Tiempo de inactividad para eliminar archivos (en segundos)
 DELETE_AFTER = 300  # 5 minutos
-user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36' #user agent
+
 # Bloqueo para evitar problemas de concurrencia
 lock = threading.Lock()
 
-def download_video(video_url, quality, cookies_file='cookies.txt'):
-    def build_ydl_opts(audio_only, base_format, use_cookies):
-        # Configuración común
-        ydl_opts = {
-            'outtmpl': f'{DOWNLOAD_FOLDER}/%(title)s.%(ext)s',
-            'format': base_format if not audio_only else None,
-            'merge_output_format': 'mp4' if not audio_only else None,
-            'user_agent': user_agent,
-            'http_headers': {'User-Agent': user_agent},
-            'no_check_certificate': True,
-            'prefer_free_formats': True,
-            'noplaylist': True,
-        }
-
-        # Solo añadir cookies si se requiere
-        if use_cookies:
-            ydl_opts['cookiefile'] = cookies_file
-
-        if audio_only:
-            ydl_opts.update({
+def download_video(video_url, quality):
+    try:
+        # Verificar si la opción seleccionada es para extraer solo audio
+        audio_only = False
+        audio_opts = {}
+        
+        if "--extract-audio" in quality:
+            audio_only = True
+            # Separar los parámetros de calidad de los parámetros de extracción de audio
+            quality_parts = quality.split(" --extract-audio")
+            base_format = quality_parts[0]
+            
+            # Configurar opciones para extraer solo audio con metadatos y thumbnail
+            audio_opts = {
                 'extractaudio': True,
                 'audioformat': 'mp3',
                 'audioquality': '320K',
-                'writethumbnail': True,
+                'outtmpl': f'{DOWNLOAD_FOLDER}/%(title)s.%(ext)s',
+                'writethumbnail': True,  # Descargar la miniatura
                 'postprocessors': [
                     {
                         'key': 'FFmpegExtractAudio',
@@ -53,58 +48,59 @@ def download_video(video_url, quality, cookies_file='cookies.txt'):
                         'preferredquality': '320',
                     },
                     {
-                        'key': 'FFmpegThumbnailsConvertor',
-                        'format': 'WebP',
+                       'key': 'FFmpegThumbnailsConvertor',  # Convertir miniatura a un formato más compatible
+                       'format': 'WebP',
                     },
                     {
-                        'key': 'EmbedThumbnail',
+                        'key': 'EmbedThumbnail',  # Incrusta la miniatura en el archivo MP3
                     },
                     {
-                        'key': 'FFmpegMetadata',
+                        'key': 'FFmpegMetadata',  # Mantener los metadatos
                         'add_metadata': True,
                     }
                 ],
                 'format': base_format,
-            })
+            }
+        
+        # Configuración base para todos los tipos de descargas
+        ydl_opts = {
+            'outtmpl': f'{DOWNLOAD_FOLDER}/%(title)s.%(ext)s',
+            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36',
+            'http_headers': {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36'},
+            'format': quality if not audio_only else None,
+            'no_check_certificate': True,
+            'merge_output_format': 'mp4' if not audio_only else None,
+            'noplaylist': True,  # Don't download playlists
+        }
+        
+        # Si es solo audio, actualizar las opciones
+        if audio_only:
+            ydl_opts.update(audio_opts)
 
-        return ydl_opts
-
-    try:
-        # Detectar si es solo audio
-        audio_only = "--extract-audio" in quality
-        base_format = quality.split(" --")[0] if audio_only else quality
-
-        # Intento 1: Sin cookies
-        ydl_opts = build_ydl_opts(audio_only, base_format, use_cookies=False)
-        try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(video_url, download=True)
-        except yt_dlp.utils.DownloadError as e:
-            # Si el error es de autenticación/captcha, intentar con cookies
-            if "confirm you’re not a bot" in str(e) or "Sign in" in str(e):
-                ydl_opts = build_ydl_opts(audio_only, base_format, use_cookies=True)
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    info = ydl.extract_info(video_url, download=True)
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(video_url, download=True)
+            file_path = ydl.prepare_filename(info)
+            
+            # Determinar la extensión correcta basada en si es solo audio o video
+            if audio_only:
+                base_path = os.path.splitext(file_path)[0]
+                file_path = f"{base_path}.mp3"
             else:
-                raise  # Otro error, relanzarlo
+                base_path = os.path.splitext(file_path)[0]
+                file_path = f"{base_path}.mp4"
+                
+            # Registrar el acceso al archivo
+            with lock:
+                last_access_times[file_path] = time.time()
 
-        # Procesar archivo descargado
-        file_path = ydl.prepare_filename(info)
-        base_path = os.path.splitext(file_path)[0]
-        file_path = f"{base_path}.mp3" if audio_only else f"{base_path}.mp4"
-
-        with lock:
-            last_access_times[file_path] = time.time()
-
-        return file_path
-
+            return file_path
+        
     except yt_dlp.utils.DownloadError as e:
         return {"error": f"Download error: {str(e)}"}
     except yt_dlp.utils.ExtractorError as e:
         return {"error": f"Could not extract video information: {str(e)}"}
     except Exception as e:
         return {"error": f"Unexpected error: {str(e)}"}
-
     
 def clean_filename(filename):
     # Eliminar emojis
@@ -228,5 +224,6 @@ cleanup_thread.start()
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5011, debug=True)
     input("Presiona Enter para salir...")
+
 
 
