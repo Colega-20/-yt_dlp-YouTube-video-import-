@@ -48,32 +48,13 @@
           required
           placeholder="Pega aquí el enlace del video..." />
 
-        <select name="quality" select class="quality-selector" id="quality">
-          <option
-            value="bestvideo[vcodec^=avc1]+bestaudio[ext=mp4]/best[vcodec^=avc1]">
-            Mejor calidad
-          </option>
-          <option
-            value="bestvideo[height<=1080][vcodec^=avc1]+bestaudio[ext=mp4]/best[vcodec^=avc1]">
-            Full HD (1080p)
-          </option>
-          <option
-            value="bestvideo[height<=720][vcodec^=avc1]+bestaudio[ext=mp4]/best[vcodec^=avc1]"
-            selected>
-            HD (720p)
-          </option>
-          <option
-            value="bestvideo[height<=480][vcodec^=avc1]+bestaudio[ext=mp4]/best[vcodec^=avc1]">
-            SD (480p)
-          </option>
-          <option
-            value="bestvideo[height<=360][vcodec^=avc1]+bestaudio[ext=mp4]/best[vcodec^=avc1]">
-            (360p)
-          </option>
-          <option
-            value="bestaudio[ext=m4a]/best --extract-audio --audio-format mp3 --audio-quality 320K">
-            Solo Audio (320kbps)
-          </option>
+        <select name="quality" class="quality-selector" id="quality">
+          <option value="6">Mejor calidad</option>
+          <option value="5">Full HD (1080p)</option>
+          <option value="4" selected>HD (720p)</option>
+          <option value="3">SD (480p)</option>
+          <option value="2">(360p)</option>
+          <option value="1">Solo Audio (320kbps)</option>
         </select>
 
         <button type="submit">Descargar</button>
